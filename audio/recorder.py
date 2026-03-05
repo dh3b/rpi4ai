@@ -22,57 +22,37 @@ def _resample(audio: np.ndarray, orig_sr: int) -> np.ndarray:
 
 class AudioRecorder:
     def __init__(self, config: AudioConfig):
-        self.config = config
-        self._stream: sd.InputStream | None = None
+        self.config    = config
+        self.sr        = config.sample_rate
+        self.chunk     = config.chunk_size
 
-        if self.config.input_device is None:
+        if config.input_device is None:
             logger.info("Audio input  -> auto-detect")
         else:
-            logger.info("Audio input  -> device index %d", self.config.input_device)
+            logger.info("Audio input  -> device index %d", config.input_device)
 
-    def _get_stream(self) -> sd.InputStream:
-        """
-        Returns the open input stream, creating it if necessary.
-        A single stream is shared between stream_chunks() and
-        record_until_silence() so ALSA never sees two simultaneous opens
-        of the same device (which causes -9985 Device unavailable).
-        """
-        if self._stream is None or self._stream.closed:
-            sr         = self.config.sample_rate
-            chunk_size = self.config.chunk_size
-            device     = self.config.input_device
-            channels   = self.config.channels
-
-            logger.info(
-                "Opening input stream  sr=%d  chunk=%d  device=%s",
-                sr, chunk_size, device
-            )
-            self._stream = sd.InputStream(
-                samplerate=sr,
-                channels=channels,
-                dtype="float32",
-                blocksize=chunk_size,
-                device=device,
-            )
-            self._stream.start()
-        return self._stream
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
+        logger.info(
+            "Opening input stream  sr=%d  chunk=%d  device=%s",
+            self.sr, self.chunk, config.input_device,
+        )
+        self._stream = sd.InputStream(
+            samplerate=config.sample_rate,
+            channels=config.channels,
+            dtype="float32",
+            blocksize=config.chunk_size,
+            device=config.input_device,
+        )
+        self._stream.start()
+        logger.info("Input stream open")
 
     def stream_chunks(self):
         """
         Infinite generator yielding float32 mono arrays resampled to
         TARGET_SR (16000 Hz). Used by the wake-word detection loop.
         """
-        sr         = self.config.sample_rate
-        chunk_size = self.config.chunk_size
-        stream     = self._get_stream()
-
         while True:
-            chunk, _ = stream.read(chunk_size)
-            yield _resample(chunk.flatten(), sr)
+            chunk, _ = self._stream.read(self.chunk)
+            yield _resample(chunk.flatten(), self.sr)
 
     def record_until_silence(
         self,
@@ -81,15 +61,11 @@ class AudioRecorder:
         silence_threshold: float,
     ) -> np.ndarray:
         """
-        Records a single utterance on the shared stream and returns a
+        Records a single utterance from the shared stream and returns a
         float32 mono array resampled to TARGET_SR (16000 Hz).
         """
-        sr         = self.config.sample_rate
-        chunk_size = self.config.chunk_size
-        stream     = self._get_stream()
-
-        max_chunks     = int(max_seconds      * sr / chunk_size)
-        silence_chunks = int(silence_duration * sr / chunk_size)
+        max_chunks     = int(max_seconds      * self.sr / self.chunk)
+        silence_chunks = int(silence_duration * self.sr / self.chunk)
 
         recorded:     list[np.ndarray] = []
         silent_count: int              = 0
@@ -100,7 +76,7 @@ class AudioRecorder:
         )
 
         for _ in range(max_chunks):
-            chunk, _ = stream.read(chunk_size)
+            chunk, _ = self._stream.read(self.chunk)
             mono      = chunk.flatten()
             recorded.append(mono)
 
@@ -114,9 +90,9 @@ class AudioRecorder:
                 silent_count = 0
 
         raw   = np.concatenate(recorded)
-        audio = _resample(raw, sr)
+        audio = _resample(raw, self.sr)
         logger.info(
             "Captured %.2f s of audio (resampled from %d to %d Hz)",
-            len(audio) / TARGET_SR, sr, TARGET_SR,
+            len(audio) / TARGET_SR, self.sr, TARGET_SR,
         )
         return audio
