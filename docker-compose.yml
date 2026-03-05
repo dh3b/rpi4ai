@@ -1,0 +1,60 @@
+services:
+  assistant:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+    environment:
+      - LLM_MODEL_PATH=${LLM_MODEL_PATH:-}
+      - LLM_SYSTEM_PROMPT=${LLM_SYSTEM_PROMPT:-}
+      - LLM_MAX_TOKENS=${LLM_MAX_TOKENS:-}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE:-}
+      - LLM_N_CTX=${LLM_N_CTX:-}
+      - LLM_N_THREADS=${LLM_N_THREADS:-}
+      - LLM_TOP_P=${LLM_TOP_P:-}
+
+      - WHISPER_MODEL_SIZE=${WHISPER_MODEL_SIZE:-}
+      - WHISPER_LANGUAGE=${WHISPER_LANGUAGE:-}
+      - WHISPER_DEVICE=${WHISPER_DEVICE:-}
+      - WHISPER_COMPUTE_TYPE=${WHISPER_COMPUTE_TYPE:-}
+
+      - WAKE_WORD_MODEL_PATH=${WAKE_WORD_MODEL_PATH:-}
+      - WAKE_WORD_THRESHOLD=${WAKE_WORD_THRESHOLD:-}
+      - WAKE_WORD_FRAMEWORK=${WAKE_WORD_FRAMEWORK:-}
+
+      - PIPER_MODEL_PATH=${PIPER_MODEL_PATH:-}
+      - PIPER_CONFIG_PATH=${PIPER_CONFIG_PATH:-}
+      - PIPER_SPEAKER_ID=${PIPER_SPEAKER_ID:-}
+
+      - AUDIO_SAMPLE_RATE=${AUDIO_SAMPLE_RATE:-}
+      - AUDIO_CHANNELS=${AUDIO_CHANNELS:-}
+      - AUDIO_CHUNK_SIZE=${AUDIO_CHUNK_SIZE:-}
+      - AUDIO_INPUT_DEVICE=${AUDIO_INPUT_DEVICE:-}
+      - AUDIO_OUTPUT_DEVICE=${AUDIO_OUTPUT_DEVICE:-}
+
+      - SILENCE_DURATION=${SILENCE_DURATION:-}
+      - MAX_RECORD_SECONDS=${MAX_RECORD_SECONDS:-}
+      - SILENCE_THRESHOLD=${SILENCE_THRESHOLD:-}
+
+      - HF_HOME=/models/.cache/huggingface
+
+    volumes:
+      - ${MODELS_DIR:-}:/models:ro
+      - /run/asound:/run/asound:rw
+
+    devices:
+      - /dev/snd:/dev/snd
+
+    # Give the container access to the host 'audio' group so it can open
+    # ALSA devices without running as root.
+    group_add:
+      - audio
+
+    privileged: false
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
