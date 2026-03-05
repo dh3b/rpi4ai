@@ -5,6 +5,21 @@ from config import AudioConfig
 
 logger = logging.getLogger(__name__)
 
+TARGET_SR = 16000  # Required by openwakeword and faster-whisper
+
+
+def _resample(audio: np.ndarray, orig_sr: int) -> np.ndarray:
+    """Linear interpolation resample to TARGET_SR. No extra dependencies."""
+    if orig_sr == TARGET_SR:
+        return audio
+    target_len = int(len(audio) * TARGET_SR / orig_sr)
+    return np.interp(
+        np.linspace(0, len(audio) - 1, target_len),
+        np.arange(len(audio)),
+        audio,
+    ).astype(np.float32)
+
+
 class AudioRecorder:
     def __init__(self, config: AudioConfig):
         self.config = config
@@ -18,8 +33,8 @@ class AudioRecorder:
 
     def stream_chunks(self):
         """
-        Yields (float32 mono) numpy arrays of
-        `chunk_size` samples.  Used by the wake-word detection loop.
+        Yields (float32 mono) numpy arrays of chunk_size samples resampled
+        to TARGET_SR (16000 Hz). Used by the wake-word detection loop.
         """
         sr         = self.config.sample_rate
         chunk_size = self.config.chunk_size
@@ -40,7 +55,7 @@ class AudioRecorder:
         ) as stream:
             while True:
                 chunk, _ = stream.read(chunk_size)
-                yield chunk.flatten()
+                yield _resample(chunk.flatten(), sr)
 
     def record_until_silence(
         self,
@@ -53,7 +68,7 @@ class AudioRecorder:
           - silence_duration seconds of consecutive silence detected, OR
           - max_seconds total recording time reached.
 
-        Returns a flat float32 mono numpy array at the configured sample rate.
+        Returns a flat float32 mono numpy array resampled to TARGET_SR (16000 Hz).
         """
         sr         = self.config.sample_rate
         chunk_size = self.config.chunk_size
@@ -94,6 +109,7 @@ class AudioRecorder:
                 else:
                     silent_count = 0
 
-        audio = np.concatenate(recorded)
-        logger.info("Captured %.2f s of audio", len(audio) / sr)
+        raw = np.concatenate(recorded)
+        audio = _resample(raw, sr)
+        logger.info("Captured %.2f s of audio (resampled from %d to %d Hz)", len(audio) / TARGET_SR, sr, TARGET_SR)
         return audio
