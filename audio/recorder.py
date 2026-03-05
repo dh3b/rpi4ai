@@ -23,14 +23,13 @@ def _resample(audio: np.ndarray, orig_sr: int) -> np.ndarray:
 class AudioRecorder:
     def __init__(self, config: AudioConfig):
         self.config = config
-        if self.config.input_device is None:
-            logger.info("Audio input  → auto-detect")
-        else:
-            logger.info("Audio input  → device index %d", self.config.input_device)
+        self._log_device_info()
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
+    def _log_device_info(self):
+        if self.config.input_device is None:
+            logger.info("Audio input  -> auto-detect")
+        else:
+            logger.info("Audio input  -> device index %d", self.config.input_device)
 
     def stream_chunks(self):
         """
@@ -42,21 +41,18 @@ class AudioRecorder:
         device     = self.config.input_device
         channels   = self.config.channels
 
-        logger.info("Opening wake-word stream  device=%s", device)
+        logger.info(
+            "Opening input stream  sr=%d  chunk=%d  device=%s",
+            sr, chunk_size, device
+        )
 
         with sd.InputStream(
-            samplerate=None,
+            samplerate=sr,
             channels=channels,
             dtype="float32",
-            blocksize=native_chunk,
+            blocksize=chunk_size,
             device=device,
         ) as stream:
-            actual_sr    = int(stream.samplerate)
-            actual_chunk = int(self.config.chunk_size * actual_sr / TARGET_SR)
-            logger.info(
-                "Stream opened  actual_sr=%d  chunk=%d → resample to %d Hz  chunk=%d",
-                actual_sr, actual_chunk, TARGET_SR, self.config.chunk_size,
-            )
             while True:
                 chunk, _ = stream.read(chunk_size)
                 yield _resample(chunk.flatten(), sr)
@@ -91,28 +87,22 @@ class AudioRecorder:
         )
 
         with sd.InputStream(
-            samplerate=None,
+            samplerate=sr,
             channels=channels,
             dtype="float32",
+            blocksize=chunk_size,
             device=device,
         ) as stream:
-            actual_sr      = int(stream.samplerate)
-            actual_chunk   = int(self.config.chunk_size * actual_sr / TARGET_SR)
-            max_chunks     = int(max_seconds      * actual_sr / actual_chunk)
-            silence_chunks = int(silence_duration * actual_sr / actual_chunk)
-
-            recorded:     list[np.ndarray] = []
-            silent_count: int              = 0
-
             for _ in range(max_chunks):
-                chunk, _ = stream.read(actual_chunk)
-                mono      = chunk.flatten()
+                chunk, _ = stream.read(chunk_size)
+                mono = chunk.flatten()
                 recorded.append(mono)
 
                 rms = float(np.sqrt(np.mean(mono ** 2)))
 
                 if rms < silence_threshold:
                     silent_count += 1
+                    # Only cut if we have at least some speech before the silence
                     if silent_count >= silence_chunks and len(recorded) > silence_chunks * 2:
                         logger.debug("Silence detected — stopping recording")
                         break
