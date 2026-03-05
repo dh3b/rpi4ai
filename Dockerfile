@@ -48,6 +48,8 @@ ENV FORCE_CMAKE=1
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+RUN python -c "import openwakeword; openwakeword.utils.download_models()"
+
 # app code
 COPY . .
 
