@@ -20,49 +20,11 @@ def _resample(audio: np.ndarray, orig_sr: int) -> np.ndarray:
 
 class AudioRecorder:
     def __init__(self, config: AudioConfig):
-        self.config    = config
-        self.device_sr = self._query_native_sr()
-        self._log_device_info()
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    def _query_native_sr(self) -> int:
-        """Query the device's native sample rate so we never request a rate it rejects."""
-        try:
-            info   = sd.query_devices(self.config.input_device, kind="input")
-            native = int(info["default_samplerate"])
-            logger.info(
-                "Device native sample rate: %d Hz%s",
-                native,
-                "" if native == TARGET_SR else f" (will resample to {TARGET_SR} Hz)",
-            )
-            return native
-        except Exception as exc:
-            logger.warning(
-                "Could not query device sample rate (%s) — "
-                "falling back to configured sr=%d",
-                exc, self.config.sample_rate,
-            )
-            return self.config.sample_rate
-
-    def _log_device_info(self):
+        self.config = config
         if self.config.input_device is None:
-            logger.info("Audio input  → auto-detect  native_sr=%d", self.device_sr)
+            logger.info("Audio input  → auto-detect")
         else:
-            logger.info(
-                "Audio input  → device index %d  native_sr=%d",
-                self.config.input_device, self.device_sr,
-            )
-
-    def _native_chunk(self) -> int:
-        """
-        Returns the blocksize to request from the device such that after
-        resampling each yielded chunk equals config.chunk_size samples at
-        TARGET_SR (i.e. ~80 ms of audio).
-        """
-        return int(self.config.chunk_size * self.device_sr / TARGET_SR)
+            logger.info("Audio input  → device index %d", self.config.input_device)
 
     # ------------------------------------------------------------------
     # Public API
@@ -70,33 +32,30 @@ class AudioRecorder:
 
     def stream_chunks(self):
         """
-        Infinite generator yielding float32 mono arrays of exactly
-        config.chunk_size samples at TARGET_SR (16000 Hz).
-        Used by the wake-word detection loop.
+        Infinite generator yielding float32 mono arrays resampled to
+        TARGET_SR (16000 Hz), each representing ~80 ms of audio.
         """
-        native_chunk = self._native_chunk()
-        device       = self.config.input_device
-        channels     = self.config.channels
+        device   = self.config.input_device
+        channels = self.config.channels
 
-        logger.info(
-            "Opening wake-word stream  native_sr=%d  native_chunk=%d  "
-            "→ target_sr=%d  target_chunk=%d  device=%s",
-            self.device_sr, native_chunk,
-            TARGET_SR, self.config.chunk_size,
-            device,
-        )
+        logger.info("Opening wake-word stream  device=%s", device)
 
         with sd.InputStream(
-            samplerate=self.device_sr,
+            samplerate=None,
             channels=channels,
             dtype="float32",
             blocksize=native_chunk,
             device=device,
         ) as stream:
+            actual_sr    = int(stream.samplerate)
+            actual_chunk = int(self.config.chunk_size * actual_sr / TARGET_SR)
+            logger.info(
+                "Stream opened  actual_sr=%d  chunk=%d → resample to %d Hz  chunk=%d",
+                actual_sr, actual_chunk, TARGET_SR, self.config.chunk_size,
+            )
             while True:
-                chunk, _ = stream.read(native_chunk)
-                mono      = chunk.flatten()
-                yield _resample(mono, self.device_sr)
+                chunk, _ = stream.read(actual_chunk)
+                yield _resample(chunk.flatten(), actual_sr)
 
     def record_until_silence(
         self,
@@ -105,18 +64,11 @@ class AudioRecorder:
         silence_threshold: float,
     ) -> np.ndarray:
         """
-        Records a single utterance, resampled to TARGET_SR (16000 Hz).
-        Returns a flat float32 mono numpy array.
+        Records a single utterance and returns a float32 mono array
+        resampled to TARGET_SR (16000 Hz).
         """
-        native_chunk   = self._native_chunk()
-        device         = self.config.input_device
-        channels       = self.config.channels
-
-        max_chunks     = int(max_seconds      * self.device_sr / native_chunk)
-        silence_chunks = int(silence_duration * self.device_sr / native_chunk)
-
-        recorded:     list[np.ndarray] = []
-        silent_count: int              = 0
+        device   = self.config.input_device
+        channels = self.config.channels
 
         logger.info(
             "Recording utterance  max=%.1fs  silence=%.1fs  threshold=%.4f",
@@ -124,14 +76,21 @@ class AudioRecorder:
         )
 
         with sd.InputStream(
-            samplerate=self.device_sr,
+            samplerate=None,
             channels=channels,
             dtype="float32",
-            blocksize=native_chunk,
             device=device,
         ) as stream:
+            actual_sr      = int(stream.samplerate)
+            actual_chunk   = int(self.config.chunk_size * actual_sr / TARGET_SR)
+            max_chunks     = int(max_seconds      * actual_sr / actual_chunk)
+            silence_chunks = int(silence_duration * actual_sr / actual_chunk)
+
+            recorded:     list[np.ndarray] = []
+            silent_count: int              = 0
+
             for _ in range(max_chunks):
-                chunk, _ = stream.read(native_chunk)
+                chunk, _ = stream.read(actual_chunk)
                 mono      = chunk.flatten()
                 recorded.append(mono)
 
@@ -146,9 +105,9 @@ class AudioRecorder:
                     silent_count = 0
 
         raw   = np.concatenate(recorded)
-        audio = _resample(raw, self.device_sr)
+        audio = _resample(raw, actual_sr)
         logger.info(
-            "Captured %.2f s → resampled from %d Hz to %d Hz",
-            len(audio) / TARGET_SR, self.device_sr, TARGET_SR,
+            "Captured %.2f s  resampled %d Hz → %d Hz",
+            len(audio) / TARGET_SR, actual_sr, TARGET_SR,
         )
         return audio
