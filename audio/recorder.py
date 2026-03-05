@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 
 TARGET_SR = 16000  # Required by openwakeword and faster-whisper
 
+
 def _resample(audio: np.ndarray, orig_sr: int) -> np.ndarray:
     """Linear interpolation resample to TARGET_SR. No extra dependencies."""
     if orig_sr == TARGET_SR:
@@ -17,6 +18,7 @@ def _resample(audio: np.ndarray, orig_sr: int) -> np.ndarray:
         np.arange(len(audio)),
         audio,
     ).astype(np.float32)
+
 
 class AudioRecorder:
     def __init__(self, config: AudioConfig):
@@ -32,11 +34,13 @@ class AudioRecorder:
 
     def stream_chunks(self):
         """
-        Infinite generator yielding float32 mono arrays resampled to
-        TARGET_SR (16000 Hz), each representing ~80 ms of audio.
+        Yields (float32 mono) numpy arrays of chunk_size samples resampled
+        to TARGET_SR (16000 Hz). Used by the wake-word detection loop.
         """
-        device   = self.config.input_device
-        channels = self.config.channels
+        sr         = self.config.sample_rate
+        chunk_size = self.config.chunk_size
+        device     = self.config.input_device
+        channels   = self.config.channels
 
         logger.info("Opening wake-word stream  device=%s", device)
 
@@ -54,8 +58,8 @@ class AudioRecorder:
                 actual_sr, actual_chunk, TARGET_SR, self.config.chunk_size,
             )
             while True:
-                chunk, _ = stream.read(actual_chunk)
-                yield _resample(chunk.flatten(), actual_sr)
+                chunk, _ = stream.read(chunk_size)
+                yield _resample(chunk.flatten(), sr)
 
     def record_until_silence(
         self,
@@ -64,11 +68,22 @@ class AudioRecorder:
         silence_threshold: float,
     ) -> np.ndarray:
         """
-        Records a single utterance and returns a float32 mono array
-        resampled to TARGET_SR (16000 Hz).
+        Opens a fresh input stream and records until either:
+          - silence_duration seconds of consecutive silence detected, OR
+          - max_seconds total recording time reached.
+
+        Returns a flat float32 mono numpy array resampled to TARGET_SR (16000 Hz).
         """
-        device   = self.config.input_device
-        channels = self.config.channels
+        sr         = self.config.sample_rate
+        chunk_size = self.config.chunk_size
+        device     = self.config.input_device
+        channels   = self.config.channels
+
+        max_chunks     = int(max_seconds    * sr / chunk_size)
+        silence_chunks = int(silence_duration * sr / chunk_size)
+
+        recorded:    list[np.ndarray] = []
+        silent_count: int             = 0
 
         logger.info(
             "Recording utterance  max=%.1fs  silence=%.1fs  threshold=%.4f",
@@ -104,10 +119,7 @@ class AudioRecorder:
                 else:
                     silent_count = 0
 
-        raw   = np.concatenate(recorded)
-        audio = _resample(raw, actual_sr)
-        logger.info(
-            "Captured %.2f s  resampled %d Hz → %d Hz",
-            len(audio) / TARGET_SR, actual_sr, TARGET_SR,
-        )
+        raw = np.concatenate(recorded)
+        audio = _resample(raw, sr)
+        logger.info("Captured %.2f s of audio (resampled from %d to %d Hz)", len(audio) / TARGET_SR, sr, TARGET_SR)
         return audio
