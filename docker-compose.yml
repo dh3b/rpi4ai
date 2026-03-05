@@ -37,8 +37,6 @@ services:
       - MAX_RECORD_SECONDS=${MAX_RECORD_SECONDS:-}
       - SILENCE_THRESHOLD=${SILENCE_THRESHOLD:-}
 
-      - HF_HOME=/models/.cache/huggingface
-
     volumes:
       - ${MODELS_DIR:-}:/models:ro
       - /run/asound:/run/asound:rw
