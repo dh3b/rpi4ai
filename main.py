@@ -47,8 +47,28 @@ class AIAssistantPipeline:
         self._max_record_seconds = cfg.max_record_seconds
         self._silence_threshold  = cfg.silence_threshold
 
+        self._confirmation_beep  = cfg.confirmation_beep
+        self._beep_frequency     = cfg.beep_frequency
+        self._beep_duration      = cfg.beep_duration
+
         self._running = False
-        logger.info("Pipeline ready")
+        logger.info("─── Pipeline ready ───")
+
+    def _play_confirmation_beep(self) -> None:
+        """
+        Synthesise a short sine-wave beep and play it immediately.
+        Generated in-process — no file I/O, no external dependency.
+        Frequency and duration are configurable via BEEP_FREQUENCY / BEEP_DURATION.
+        """
+        if not self._confirmation_beep:
+            return
+
+        sr      = 22050
+        t       = np.linspace(0, self._beep_duration, int(sr * self._beep_duration), endpoint=False)
+        beep    = np.sin(2 * np.pi * self._beep_frequency * t).astype(np.float32)
+        fade    = np.linspace(1.0, 0.0, len(beep))
+        beep   *= fade
+        self.speaker.play_audio(beep, sr)
 
     def _install_signal_handlers(self):
         def _shutdown(sig, _frame):
@@ -74,6 +94,7 @@ class AIAssistantPipeline:
                 continue
 
             logger.info("Wake word - recording command")
+            self._play_confirmation_beep()
 
             # Step 2: record utterance
             utterance_audio = self.recorder.record_until_silence(

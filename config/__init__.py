@@ -20,9 +20,10 @@ def _optional_int(env_key: str, default: int = -1) -> Optional[int]:
 
 @dataclass
 class AudioConfig:
-    sample_rate: int           = int(os.getenv("AUDIO_SAMPLE_RATE", "16000"))
-    channels: int              = int(os.getenv("AUDIO_CHANNELS", "1"))
-    chunk_size: int            = int(os.getenv("AUDIO_CHUNK_SIZE", "1280"))
+    sample_rate: int            = int(os.getenv("AUDIO_SAMPLE_RATE", "16000"))
+    channels: int               = int(os.getenv("AUDIO_CHANNELS", "1"))
+    chunk_size: int             = int(os.getenv("AUDIO_CHUNK_SIZE", "1280"))
+    volume: float               = float(os.getenv("AUDIO_VOLUME", "1.0"))
     input_device: Optional[int]  = field(default=None)
     output_device: Optional[int] = field(default=None)
 
@@ -73,6 +74,11 @@ class AppConfig:
     tts:               TTSConfig      = field(default_factory=TTSConfig)
 
     # Recording / VAD
-    silence_duration:  float = float(os.getenv("SILENCE_DURATION",   "1.5"))
+    silence_duration:   float = float(os.getenv("SILENCE_DURATION",   "1.5"))
     max_record_seconds: float = float(os.getenv("MAX_RECORD_SECONDS", "15.0"))
-    silence_threshold: float = float(os.getenv("SILENCE_THRESHOLD",  "0.02"))
+    silence_threshold:  float = float(os.getenv("SILENCE_THRESHOLD",  "0.02"))
+
+    # Confirmation beep
+    confirmation_beep:  bool  = os.getenv("CONFIRMATION_BEEP", "true").lower() == "true"
+    beep_frequency:     float = float(os.getenv("BEEP_FREQUENCY", "880.0"))
+    beep_duration:      float = float(os.getenv("BEEP_DURATION",  "0.15"))
