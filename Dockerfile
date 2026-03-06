@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     portaudio19-dev \
     libasound2-dev \
     libsndfile1 \
-    libespeak-ng1 \
     alsa-utils \
     wget \
     tar \
@@ -35,6 +34,7 @@ RUN set -eux; \
     # Copy binary + all bundled .so files (libpiper_phonemize, libespeak-ng, etc.)
     cp /tmp/piper_extract/piper/piper /usr/local/bin/piper; \
     cp /tmp/piper_extract/piper/*.so* /usr/local/lib/; \
+    cp -r /tmp/piper_extract/piper/espeak-ng-data /usr/share/espeak-ng-data; \
     chmod +x /usr/local/bin/piper; \
     ldconfig; \
     rm -rf /tmp/piper.tar.gz /tmp/piper_extract
