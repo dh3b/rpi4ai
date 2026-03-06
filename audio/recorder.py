@@ -69,6 +69,7 @@ class AudioRecorder:
 
         recorded:     list[np.ndarray] = []
         silent_count: int              = 0
+        speech_detected: bool          = False
 
         logger.info(
             "Recording utterance  max=%.1fs  silence=%.1fs  threshold=%.4f",
@@ -81,13 +82,15 @@ class AudioRecorder:
             recorded.append(mono)
 
             rms = float(np.sqrt(np.mean(mono ** 2)))
-            if rms < silence_threshold:
+
+            if rms >= silence_threshold:
+                speech_detected = True
+                silent_count    = 0
+            elif speech_detected:
                 silent_count += 1
-                if silent_count >= silence_chunks and len(recorded) > silence_chunks * 2:
-                    logger.debug("Silence detected — stopping recording")
+                if silent_count >= silence_chunks:
+                    logger.debug("Silence detected after speech — stopping recording")
                     break
-            else:
-                silent_count = 0
 
         raw   = np.concatenate(recorded)
         audio = _resample(raw, self.sr)
