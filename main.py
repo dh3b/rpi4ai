@@ -2,6 +2,7 @@ import logging
 import signal
 import sys
 
+import numpy as np
 from config import AppConfig
 from audio.recorder   import AudioRecorder
 from audio.speaker    import AudioSpeaker
