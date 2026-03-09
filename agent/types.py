@@ -35,21 +35,30 @@ class AgentResponse:
     meta: Optional[Dict[str, Any]] = None
 
 
-AGENT_RESPONSE_JSON_CONTRACT = """\
-You MUST respond with a single valid JSON object and nothing else.
+AGENT_RESPONSE_JSON_CONTRACT = """
+You must respond with exactly one valid JSON object. Output only JSON and nothing else.
 
-Required top-level keys:
-- "say": string
-- "actions": array
-Optional top-level keys:
-- "meta": object
+The JSON object must follow this structure:
 
-Where each element of "actions" MUST be:
-{ "tool": string, "args": object }
+{
+  "say": string,
+  "actions": [
+    { "tool": string, "args": object }
+  ],
+  "meta": object (optional)
+}
 
 Rules:
-- Do not wrap the JSON in markdown fences.
-- Do not include any extra keys at the top level.
-- If no tools are needed, respond with: {"say": "<your answer>", "actions": []}
+- "say" is required and must contain the text spoken to the user.
+- "actions" is required and must be an array.
+- Each element of "actions" must be:
+  { "tool": string, "args": object }
+- "meta" is optional and must be an object if present.
+- Do not add any other top-level keys.
+- Do not wrap the JSON in markdown or code blocks.
+
+If no tools are required, return:
+
+{"say": "<response text>", "actions": []}
 """
 
