@@ -10,6 +10,8 @@ from wake_word.detector import WakeWordDetector
 from stt.transcriber  import SpeechTranscriber
 from llm.inference    import LLMInference
 from tts.synthesizer  import TTSSynthesizer
+from agent.controller import AgentController
+from tools import default_registry
 
 logging.basicConfig(
     level=logging.INFO,
@@ -42,6 +44,17 @@ class AIAssistantPipeline:
         self.stt       = SpeechTranscriber(cfg.stt)
         self.llm       = LLMInference(cfg.llm)
         self.tts       = TTSSynthesizer(cfg.tts)
+
+        self._agent_enabled = cfg.agent_enabled
+        self._agent = None
+        if self._agent_enabled:
+            registry = default_registry()
+            self._agent = AgentController(
+                self.llm,
+                registry,
+                max_iterations=cfg.agent_max_iterations,
+                speak_intermediate=cfg.agent_speak_intermediate,
+            )
 
         # Pipeline-level knobs (from env via AppConfig)
         self._silence_duration   = cfg.silence_duration
@@ -112,18 +125,20 @@ class AIAssistantPipeline:
                 self.wake_word.reset()
                 continue
 
-            # Step 4: LLM inference
-            response_text = self.llm.chat(user_text)
+            # Step 4: Agent/LLM inference
+            if self._agent_enabled and self._agent is not None:
+                response_text = self._agent.run_turn(user_text, tts=self.tts, speaker=self.speaker)
+            else:
+                response_text = self.llm.chat(user_text)
 
             if not response_text:
                 logger.info("Empty LLM response - resuming wake-word loop")
                 continue
 
-            # Step 5: text -> speech
-            audio_out, sample_rate = self.tts.synthesize(response_text)
-
-            # Step 6: play response
-            self.speaker.play_audio(audio_out, sample_rate)
+            # Step 5/6: text -> speech -> play response (only in non-agent mode).
+            if not (self._agent_enabled and self._agent is not None):
+                audio_out, sample_rate = self.tts.synthesize(response_text)
+                self.speaker.play_audio(audio_out, sample_rate)
 
             logger.info("Listening for wake word")
 

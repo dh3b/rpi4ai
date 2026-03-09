@@ -1,5 +1,5 @@
 import logging
-from typing import Iterator
+from typing import Iterator, Optional
 from llama_cpp import Llama
 from config import LLMConfig
 
@@ -27,13 +27,16 @@ class LLMInference:
         logger.info("LLM ready")
         return model
 
-    def _build_messages(self) -> list[dict[str, str]]:
+    def _build_messages(self, extra_system_prompt: Optional[str] = None) -> list[dict[str, str]]:
+        system_prompt = self.config.system_prompt
+        if extra_system_prompt:
+            system_prompt = f"{system_prompt}\n\n{extra_system_prompt}"
         return [
-            {"role": "system", "content": self.config.system_prompt},
+            {"role": "system", "content": system_prompt},
             *self.history,
         ]
 
-    def chat(self, user_message: str) -> str:
+    def chat(self, user_message: str, *, extra_system_prompt: Optional[str] = None) -> str:
         """
         Send user_message, append to history, return the full reply string.
         Blocks until generation is complete.
@@ -42,7 +45,7 @@ class LLMInference:
         logger.info("LLM ← '%s'", user_message)
 
         response = self.model.create_chat_completion(
-            messages=self._build_messages(),
+            messages=self._build_messages(extra_system_prompt=extra_system_prompt),
             max_tokens=self.config.max_tokens,
             temperature=self.config.temperature,
             top_p=self.config.top_p,
@@ -53,7 +56,7 @@ class LLMInference:
         logger.info("LLM → '%s'", reply)
         return reply
 
-    def stream_chat(self, user_message: str) -> Iterator[str]:
+    def stream_chat(self, user_message: str, *, extra_system_prompt: Optional[str] = None) -> Iterator[str]:
         """
         Stream the reply token-by-token.
         Yields each token as a string; full reply is saved to history
@@ -71,7 +74,7 @@ class LLMInference:
         full_reply: list[str] = []
 
         for chunk in self.model.create_chat_completion(
-            messages=self._build_messages(),
+            messages=self._build_messages(extra_system_prompt=extra_system_prompt),
             max_tokens=self.config.max_tokens,
             temperature=self.config.temperature,
             top_p=self.config.top_p,

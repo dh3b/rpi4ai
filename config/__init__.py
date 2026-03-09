@@ -73,6 +73,11 @@ class AppConfig:
     llm:               LLMConfig      = field(default_factory=LLMConfig)
     tts:               TTSConfig      = field(default_factory=TTSConfig)
 
+    # Agent / tool-calling mode
+    agent_enabled: bool = os.getenv("AGENT_ENABLED", "true").lower() == "true"
+    agent_max_iterations: int = int(os.getenv("AGENT_MAX_ITERATIONS", "5"))
+    agent_speak_intermediate: bool = os.getenv("AGENT_SPEAK_INTERMEDIATE", "true").lower() == "true"
+
     # Recording / VAD
     silence_duration:   float = float(os.getenv("SILENCE_DURATION",   "1.5"))
     max_record_seconds: float = float(os.getenv("MAX_RECORD_SECONDS", "15.0"))
