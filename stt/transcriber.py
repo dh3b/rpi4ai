@@ -12,13 +12,13 @@ class SpeechTranscriber:
 
     def _load_model(self) -> WhisperModel:
         logger.info(
-            "Loading Whisper  size=%s  device=%s  compute_type=%s",
-            self.config.model_size,
+            "Loading Whisper  path=%s  device=%s  compute_type=%s",
+            self.config.model_path,
             self.config.device,
             self.config.compute_type,
         )
         model = WhisperModel(
-            self.config.model_size,
+            self.config.model_path,
             device=self.config.device,
             compute_type=self.config.compute_type,
         )

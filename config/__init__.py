@@ -41,7 +41,7 @@ class WakeWordConfig:
 
 @dataclass
 class STTConfig:
-    model_size:   str = os.getenv("WHISPER_MODEL_SIZE",    "base")
+    model_path:   str = os.getenv("WHISPER_MODEL_PATH",    "/models/whisper")
     language:     str = os.getenv("WHISPER_LANGUAGE",      "en")
     device:       str = os.getenv("WHISPER_DEVICE",        "cpu")
     compute_type: str = os.getenv("WHISPER_COMPUTE_TYPE",  "int8")

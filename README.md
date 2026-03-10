@@ -75,6 +75,16 @@ wget -P models/tts/ \
 Option A - Use a web trainer
 Option B - Use a built-in openwakeword model for testing
 
+**STT — Whisper**
+```bash
+pip install huggingface_hub
+huggingface-cli download \
+  Systran/faster-whisper-tiny \
+  --local-dir models/whisper/tiny
+```
+
+You can replace `Systran/faster-whisper-tiny` with another compatible Whisper model if you prefer, as long as you keep the directory layout under `models/whisper/`.
+
 ### 3. Configure
 
 ```bash
@@ -82,11 +92,12 @@ cp .env.example .env
 # Edit .env - at minimum set LLM_MODEL_PATH, PIPER_MODEL_PATH, PIPER_CONFIG_PATH
 ```
 
-Update `.env` for your voice paths:
+Update `.env` for your model paths:
 ```
 PIPER_MODEL_PATH=/models/tts/en_US-lessac-medium.onnx
 PIPER_CONFIG_PATH=/models/tts/en_US-lessac-medium.onnx.json
 LLM_MODEL_PATH=/models/llm/model.gguf
+WHISPER_MODEL_PATH=/models/whisper/tiny
 ```
 
 ### 4. Build & run
@@ -138,8 +149,8 @@ sudo usermod -aG audio $USER
 | Goal | Setting |
 |------|---------|
 | Reduce RAM usage | Lower `LLM_N_CTX` (e.g. 2048) |
-| Faster transcription | `WHISPER_MODEL_SIZE=tiny` |
-| Better transcription | `WHISPER_MODEL_SIZE=small` |
+| Faster transcription | Use a smaller Whisper model under `WHISPER_MODEL_PATH` (e.g. `tiny`) |
+| Better transcription | Use a larger Whisper model under `WHISPER_MODEL_PATH` (e.g. `small`) |
 | Less false wake-word triggers | Raise `WAKE_WORD_THRESHOLD` (e.g. 0.7) |
 | Cut off sooner after speaking | Lower `SILENCE_DURATION` (e.g. 1.0) |
 | Reduce background noise cutoff | Raise `SILENCE_THRESHOLD` (e.g. 0.04) |

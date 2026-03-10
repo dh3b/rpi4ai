@@ -63,17 +63,4 @@ RUN useradd -m -s /bin/bash assistant && \
 
 USER assistant
 
-# model cache dirs (Whisper auto-downloads here)
-ENV HF_HOME=/app/.cache/huggingface
-ENV XDG_CACHE_HOME=/app/.cache
-
-# pre-download whisper
-ARG WHISPER_MODEL_SIZE=base
-RUN python -c "\
-from faster_whisper import WhisperModel; \
-import os; \
-print('Downloading Whisper model:', os.environ['WHISPER_MODEL_SIZE']); \
-WhisperModel('${WHISPER_MODEL_SIZE}', device='cpu', compute_type='int8'); \
-print('Whisper model cached.')"
-
 CMD ["python", "main.py"]
