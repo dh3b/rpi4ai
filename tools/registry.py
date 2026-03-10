@@ -54,8 +54,32 @@ class ToolRegistry:
         return (self._tools[k] for k in sorted(self._tools.keys()))
 
     def call(self, name: str, args: Dict[str, Any]) -> Any:
+        """
+        Invoke a tool by name with a dict of JSON arguments.
+
+        Extra keys supplied by the LLM are ignored unless the tool explicitly
+        accepts **kwargs. This makes tool-calling robust to hallucinated
+        arguments such as unexpected keyword parameters.
+        """
         spec = self.get(name)
-        return spec.func(**(args or {}))
+        func = spec.func
+        sig = inspect.signature(func)
+
+        # If the tool accepts **kwargs, pass all arguments through as-is.
+        has_var_kw = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+        if has_var_kw:
+            return func(**(args or {}))
+
+        # Otherwise, only pass arguments that match the function's parameter names.
+        safe_kwargs: Dict[str, Any] = {}
+        incoming = args or {}
+        for param_name, param in sig.parameters.items():
+            if param.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.VAR_POSITIONAL):
+                continue
+            if param_name in incoming:
+                safe_kwargs[param_name] = incoming[param_name]
+
+        return func(**safe_kwargs)
 
 
 def tool(*, registry: ToolRegistry, name: Optional[str] = None, description: Optional[str] = None):
