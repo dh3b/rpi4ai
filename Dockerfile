@@ -1,26 +1,21 @@
-FROM python:3.11-slim-bookworm
+# Build
+FROM python:3.11-slim-bookworm AS builder
 
-# dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
     pkg-config \
     libopenblas-dev \
-    portaudio19-dev \
-    libasound2-dev \
-    libsndfile1 \
-    alsa-utils \
     wget \
     tar \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    ca-certificates
 
-# Piper TTS
 ARG PIPER_VERSION=2023.11.14-2
 
-RUN set -eux; \
+RUN set -ux; \
     ARCH=$(dpkg --print-architecture); \
-    # Map debian arch names -> piper release names
     case "$ARCH" in \
       arm64)   PIPER_ARCH="aarch64" ;; \
       armhf)   PIPER_ARCH="armv7l"  ;; \
@@ -31,32 +26,53 @@ RUN set -eux; \
       "https://github.com/rhasspy/piper/releases/download/${PIPER_VERSION}/piper_linux_${PIPER_ARCH}.tar.gz"; \
     mkdir -p /tmp/piper_extract; \
     tar -xzf /tmp/piper.tar.gz -C /tmp/piper_extract; \
-    # Copy binary + all bundled .so files (libpiper_phonemize, libespeak-ng, etc.)
-    cp /tmp/piper_extract/piper/piper /usr/local/bin/piper; \
-    cp /tmp/piper_extract/piper/*.so* /usr/local/lib/; \
-    cp -r /tmp/piper_extract/piper/espeak-ng-data /usr/share/espeak-ng-data; \
-    chmod +x /usr/local/bin/piper; \
-    ldconfig; \
+    mkdir -p /piper/lib /piper/bin /piper/espeak-ng-data; \
+    cp /tmp/piper_extract/piper/piper /piper/bin/piper; \
+    cp /tmp/piper_extract/piper/*.so* /piper/lib/; \
+    cp -r /tmp/piper_extract/piper/espeak-ng-data /piper/espeak-ng-data; \
+    chmod +x /piper/bin/piper; \
     rm -rf /tmp/piper.tar.gz /tmp/piper_extract
 
-# create user
-RUN useradd -m -s /bin/bash assistant && usermod -aG audio assistant
-
-# python dependencies
-WORKDIR /app
-
+WORKDIR /build
 COPY requirements.txt .
 
-# llama-cpp-python compiles llama.cpp from source.
 ENV CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS"
 ENV FORCE_CMAKE=1
 
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip && \
+    pip wheel --no-deps --wheel-dir /wheels -r requirements.txt
+
+# Runtime
+FROM python:3.11-slim-bookworm
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+    libopenblas0 \
+    portaudio19-dev \
+    libasound2-dev \
+    libsndfile1 \
+    alsa-utils \
+    ca-certificates
+
+COPY --from=builder /piper/bin/piper /usr/local/bin/piper
+COPY --from=builder /piper/lib/ /usr/local/lib/
+COPY --from=builder /piper/espeak-ng-data /usr/share/espeak-ng-data
+
+RUN ldconfig
+
+COPY --from=builder /wheels /wheels
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip && \
+    pip install --no-index --find-links=/wheels /wheels/*
 
 RUN python -c "import openwakeword; openwakeword.utils.download_models()"
 
-# app code
+RUN useradd -m -s /bin/bash assistant && usermod -aG audio assistant
+
+WORKDIR /app
 COPY --chown=assistant:assistant . .
 
 USER assistant
