@@ -1,0 +1,49 @@
+# Enforces: { "say": string, "actions": [...], "meta": object (optional) }
+# No extra top-level keys are permitted.
+
+root ::= "{" ws
+           "\"say\""     ws ":" ws string     ws ","  ws
+           "\"actions\"" ws ":" ws actions-array
+           ( ws "," ws "\"meta\"" ws ":" ws object )?
+         ws "}"
+
+actions-array ::= "[" ws "]"
+                | "[" ws action-item ( ws "," ws action-item )* ws "]"
+
+action-item ::= "{" ws
+                  "\"tool\"" ws ":" ws string ws "," ws
+                  "\"args\"" ws ":" ws object
+                ws "}"
+
+object ::= "{" ws "}"
+         | "{" ws object-member ( ws "," ws object-member )* ws "}"
+
+object-member ::= string ws ":" ws value
+
+array ::= "[" ws "]"
+        | "[" ws value ( ws "," ws value )* ws "]"
+
+value ::= string
+        | number
+        | object
+        | array
+        | "true"
+        | "false"
+        | "null"
+
+string ::= "\"" char* "\""
+
+char ::= [^"\\]
+       | "\\" ( "\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t"
+              | "u" [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F] )
+
+number ::= "-"? integral frac? exp?
+
+integral ::= "0"
+           | [1-9] [0-9]*
+
+frac ::= "." [0-9]+
+
+exp ::= [eE] [-+]? [0-9]+
+
+ws ::= [ \t\n\r]*

@@ -56,6 +56,7 @@ class LLMConfig:
     n_ctx:         int   = int(os.getenv("LLM_N_CTX",       "4096"))
     n_threads:     int   = int(os.getenv("LLM_N_THREADS",   "4"))
     top_p:         float = float(os.getenv("LLM_TOP_P",       "0.95"))
+    agent_enabled: bool = os.getenv("AGENT_ENABLED", "true").lower() == "true"
 
 
 @dataclass

@@ -36,8 +36,7 @@ class AgentResponse:
 
 
 AGENT_RESPONSE_JSON_CONTRACT = """
-You must respond with exactly one valid JSON object. Output only JSON and nothing else.
-
+You must respond with JSON that matches the schema implied by the tools.
 The JSON object must follow this structure:
 
 {
@@ -49,16 +48,13 @@ The JSON object must follow this structure:
 }
 
 Rules:
-- "say" is required and must contain the text spoken to the user.
-- "actions" is required and must be an array.
-- Each element of "actions" must be:
-  { "tool": string, "args": object }
-- "meta" is optional and must be an object if present.
-- Do not add any other top-level keys.
-- Do not wrap the JSON in markdown or code blocks.
+- Use "say" for user-facing text.
+- Use "actions" to specify any tools you want to invoke, with their arguments.
+- Result of tool calls will be passed back to you in the next prompt.
 
 If no tools are required, return:
-
 {"say": "<response text>", "actions": []}
+If no response text is needed, return:
+{"say": "", "actions": [ ... ]}
 """
 

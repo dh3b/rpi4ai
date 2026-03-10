@@ -9,27 +9,11 @@ from agent.types import AgentAction, AgentResponse
 logger = logging.getLogger(__name__)
 
 
-def _try_load_json(s: str) -> Tuple[bool, Optional[Dict[str, Any]]]:
+def _try_load_json(s: str) -> Dict[str, Any]:
     try:
-        obj = json.loads(s)
-        if isinstance(obj, dict):
-            return True, obj
-        return False, None
-    except Exception:
-        return False, None
-
-
-def _extract_first_object_block(s: str) -> Optional[str]:
-    """
-    Best-effort extraction of a JSON object from a messy string by taking the
-    substring between the first '{' and last '}'.
-    """
-    start = s.find("{")
-    end = s.rfind("}")
-    if start == -1 or end == -1 or end <= start:
-        return None
-    return s[start : end + 1]
-
+        return json.loads(s)
+    except json.JSONDecodeError:
+        return {}
 
 def parse_agent_response(raw_text: str) -> AgentResponse:
     """
@@ -41,19 +25,13 @@ def parse_agent_response(raw_text: str) -> AgentResponse:
     if not text:
         return AgentResponse(say="", actions=[])
 
-    ok, obj = _try_load_json(text)
-    if not ok:
-        candidate = _extract_first_object_block(text)
-        if candidate:
-            ok, obj = _try_load_json(candidate)
+    obj = _try_load_json(text)
 
-    if not ok or not obj:
+    if not obj:
         logger.warning("Agent JSON parse failed; falling back to plain text")
         return AgentResponse(say=text, actions=[])
 
-    say = obj.get("say", "")
-    if not isinstance(say, str):
-        say = str(say)
+    say = str(obj.get("say", ""))
 
     actions_raw = obj.get("actions", [])
     actions: List[AgentAction] = []

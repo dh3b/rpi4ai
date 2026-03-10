@@ -1,6 +1,6 @@
 import logging
 from typing import Iterator, Optional
-from llama_cpp import Llama
+from llama_cpp import Llama, LlamaGrammar
 from config import LLMConfig
 
 logger = logging.getLogger(__name__)
@@ -9,6 +9,10 @@ class LLMInference:
     def __init__(self, config: LLMConfig):
         self.config  = config
         self.model   = self._load_model()
+        if self.config.agent_enabled:
+            self.grammar = LlamaGrammar.from_file("../grammar/agent.gbnf")
+        else:
+            self.grammar = LlamaGrammar.from_file("../grammar/chatbot.gbnf")
         self.history: list[dict[str, str]] = []
 
     def _load_model(self) -> Llama:
@@ -46,6 +50,7 @@ class LLMInference:
 
         response = self.model.create_chat_completion(
             messages=self._build_messages(extra_system_prompt=extra_system_prompt),
+            grammar=self.grammar,
             max_tokens=self.config.max_tokens,
             temperature=self.config.temperature,
             top_p=self.config.top_p,
@@ -75,6 +80,7 @@ class LLMInference:
 
         for chunk in self.model.create_chat_completion(
             messages=self._build_messages(extra_system_prompt=extra_system_prompt),
+            grammar=self.grammar,
             max_tokens=self.config.max_tokens,
             temperature=self.config.temperature,
             top_p=self.config.top_p,

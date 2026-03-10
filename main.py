@@ -1,6 +1,7 @@
 import logging
 import signal
 import sys
+import json
 
 import numpy as np
 from config import AppConfig
@@ -129,7 +130,12 @@ class AIAssistantPipeline:
             if self._agent_enabled and self._agent is not None:
                 response_text = self._agent.run_turn(user_text, tts=self.tts, speaker=self.speaker)
             else:
-                response_text = self.llm.chat(user_text)
+                raw_response = self.llm.chat(user_text)
+                try:
+                    response_text = json.loads(raw_response)["say"]
+                except json.JSONDecodeError:
+                    logger.warning("LLM response was not valid JSON - treating as plain text")
+                    response_text = raw_response
 
             if not response_text:
                 logger.info("Empty LLM response - resuming wake-word loop")
