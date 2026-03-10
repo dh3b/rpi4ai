@@ -39,6 +39,9 @@ RUN set -eux; \
     ldconfig; \
     rm -rf /tmp/piper.tar.gz /tmp/piper_extract
 
+# create user
+RUN useradd -m -s /bin/bash assistant && usermod -aG audio assistant
+
 # python dependencies
 WORKDIR /app
 
@@ -54,12 +57,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 RUN python -c "import openwakeword; openwakeword.utils.download_models()"
 
 # app code
-COPY . .
-
-# non-root user with audio group access 
-RUN useradd -m -s /bin/bash assistant && \
-    usermod -aG audio assistant && \
-    chown -R assistant:assistant /app
+COPY --chown=assistant:assistant . .
 
 USER assistant
 
