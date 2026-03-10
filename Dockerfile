@@ -41,7 +41,7 @@ ENV FORCE_CMAKE=1
 
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip && \
-    pip wheel --no-deps --wheel-dir /wheels -r requirements.txt
+    pip wheel --wheel-dir /wheels -r requirements.txt
 
 # Runtime
 FROM python:3.11-slim-bookworm
