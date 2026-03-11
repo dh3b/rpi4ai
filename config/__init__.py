@@ -20,50 +20,50 @@ def _optional_int(env_key: str, default: int = -1) -> Optional[int]:
 
 @dataclass
 class AudioConfig:
-    sample_rate: int            = int(os.getenv("AUDIO_SAMPLE_RATE", "16000"))
-    channels: int               = int(os.getenv("AUDIO_CHANNELS", "1"))
-    chunk_size: int             = int(os.getenv("AUDIO_CHUNK_SIZE", "1280"))
-    volume: float               = float(os.getenv("AUDIO_VOLUME", "1.0"))
+    sample_rate: int            = int(os.getenv("AUDIO_SAMPLE_RATE"))
+    channels: int               = int(os.getenv("AUDIO_CHANNELS"))
+    chunk_size: int             = int(os.getenv("AUDIO_CHUNK_SIZE"))
+    volume: float               = float(os.getenv("AUDIO_VOLUME"))
     input_device: Optional[int]  = field(default=None)
     output_device: Optional[int] = field(default=None)
 
     def __post_init__(self):
-        self.input_device  = _optional_int("AUDIO_INPUT_DEVICE",  -1)
-        self.output_device = _optional_int("AUDIO_OUTPUT_DEVICE", -1)
+        self.input_device  = _optional_int("AUDIO_INPUT_DEVICE")
+        self.output_device = _optional_int("AUDIO_OUTPUT_DEVICE")
 
 
 @dataclass
 class WakeWordConfig:
-    model_path:          str   = os.getenv("WAKE_WORD_MODEL_PATH",  "/models/wakeword/model.onnx")
-    threshold:           float = float(os.getenv("WAKE_WORD_THRESHOLD", "0.5"))
-    inference_framework: str   = os.getenv("WAKE_WORD_FRAMEWORK",   "onnx")
+    model_path:          str   = os.getenv("WAKE_WORD_MODEL_PATH")
+    threshold:           float = float(os.getenv("WAKE_WORD_THRESHOLD"))
+    inference_framework: str   = os.getenv("WAKE_WORD_FRAMEWORK")
 
 
 @dataclass
 class STTConfig:
-    model_path:   str = os.getenv("WHISPER_MODEL_PATH",    "/models/whisper")
-    language:     str = os.getenv("WHISPER_LANGUAGE",      "en")
-    device:       str = os.getenv("WHISPER_DEVICE",        "cpu")
-    compute_type: str = os.getenv("WHISPER_COMPUTE_TYPE",  "int8")
+    model_path:   str = os.getenv("WHISPER_MODEL_PATH")
+    language:     str = os.getenv("WHISPER_LANGUAGE")
+    device:       str = os.getenv("WHISPER_DEVICE")
+    compute_type: str = os.getenv("WHISPER_COMPUTE_TYPE")
 
 
 @dataclass
 class LLMConfig:
-    model_path:    str   = os.getenv("LLM_MODEL_PATH",    "/models/llm/model.gguf")
-    system_prompt: str   = os.getenv("LLM_SYSTEM_PROMPT", "You are a helpful AI assistant. Keep answers concise.")
-    max_tokens:    int   = int(os.getenv("LLM_MAX_TOKENS",   "512"))
-    temperature:   float = float(os.getenv("LLM_TEMPERATURE", "0.7"))
-    n_ctx:         int   = int(os.getenv("LLM_N_CTX",       "4096"))
-    n_threads:     int   = int(os.getenv("LLM_N_THREADS",   "4"))
-    top_p:         float = float(os.getenv("LLM_TOP_P",       "0.95"))
-    agent_enabled: bool = os.getenv("AGENT_ENABLED", "true").lower() == "true"
+    model_path:    str   = os.getenv("LLM_MODEL_PATH")
+    system_prompt: str   = os.getenv("LLM_SYSTEM_PROMPT")
+    max_tokens:    int   = int(os.getenv("LLM_MAX_TOKENS"))
+    temperature:   float = float(os.getenv("LLM_TEMPERATURE"))
+    n_ctx:         int   = int(os.getenv("LLM_N_CTX"))
+    n_threads:     int   = int(os.getenv("LLM_N_THREADS"))
+    top_p:         float = float(os.getenv("LLM_TOP_P"))
+    agent_enabled: bool = os.getenv("AGENT_ENABLED").lower() == "true"
 
 
 @dataclass
 class TTSConfig:
-    model_path:  str            = os.getenv("PIPER_MODEL_PATH",   "/models/tts/voice.onnx")
-    config_path: str            = os.getenv("PIPER_CONFIG_PATH",  "/models/tts/voice.onnx.json")
-    speaker_id:  Optional[int]  = _optional_int("PIPER_SPEAKER_ID", -1)
+    model_path:  str            = os.getenv("PIPER_MODEL_PATH")
+    config_path: str            = os.getenv("PIPER_CONFIG_PATH")
+    speaker_id:  Optional[int]  = _optional_int("PIPER_SPEAKER_ID")
 
 
 @dataclass
@@ -75,15 +75,15 @@ class AppConfig:
     tts:               TTSConfig      = field(default_factory=TTSConfig)
 
     # Agent / tool-calling mode
-    agent_enabled: bool = os.getenv("AGENT_ENABLED", "true").lower() == "true"
-    agent_speak_intermediate: bool = os.getenv("AGENT_SPEAK_INTERMEDIATE", "true").lower() == "true"
+    agent_enabled: bool = os.getenv("AGENT_ENABLED").lower() == "true"
+    agent_speak_intermediate: bool = os.getenv("AGENT_SPEAK_INTERMEDIATE").lower() == "true"
 
     # Recording / VAD
-    silence_duration:   float = float(os.getenv("SILENCE_DURATION",   "1.5"))
-    max_record_seconds: float = float(os.getenv("MAX_RECORD_SECONDS", "15.0"))
-    silence_threshold:  float = float(os.getenv("SILENCE_THRESHOLD",  "0.02"))
+    silence_duration:   float = float(os.getenv("SILENCE_DURATION"))
+    max_record_seconds: float = float(os.getenv("MAX_RECORD_SECONDS"))
+    silence_threshold:  float = float(os.getenv("SILENCE_THRESHOLD"))
 
     # Confirmation beep
-    confirmation_beep:  bool  = os.getenv("CONFIRMATION_BEEP", "true").lower() == "true"
-    beep_frequency:     float = float(os.getenv("BEEP_FREQUENCY", "880.0"))
-    beep_duration:      float = float(os.getenv("BEEP_DURATION",  "0.15"))
+    confirmation_beep:  bool  = os.getenv("CONFIRMATION_BEEP").lower() == "true"
+    beep_frequency:     float = float(os.getenv("BEEP_FREQUENCY"))
+    beep_duration:      float = float(os.getenv("BEEP_DURATION"))
