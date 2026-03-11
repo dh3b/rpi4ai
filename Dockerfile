@@ -29,7 +29,7 @@ RUN set -ux; \
     mkdir -p /piper/lib /piper/bin /piper/espeak-ng-data; \
     cp /tmp/piper_extract/piper/piper /piper/bin/piper; \
     cp /tmp/piper_extract/piper/*.so* /piper/lib/; \
-    cp -r /tmp/piper_extract/piper/espeak-ng-data /piper/espeak-ng-data; \
+    cp -r /tmp/piper_extract/piper/espeak-ng-data/* /piper/espeak-ng-data/; \
     chmod +x /piper/bin/piper; \
     rm -rf /tmp/piper.tar.gz /tmp/piper_extract
 
