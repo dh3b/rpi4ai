@@ -32,11 +32,7 @@ class AgentController:
         function_tools: List[LlamaCppFunctionTool] = []
         for spec in self.registry.all():
             function_tools.append(
-                LlamaCppFunctionTool(
-                    spec.func,
-                    name=spec.name,
-                    description=spec.description,
-                )
+                LlamaCppFunctionTool(spec.func)
             )
 
         def _send_message_to_user_callback(message: str, **_kwargs: Any) -> None:
