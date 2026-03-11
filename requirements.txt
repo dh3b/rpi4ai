@@ -1,5 +1,6 @@
 faster-whisper==1.1.1
 llama-cpp-python==0.3.16
+llama-cpp-agent>=0.2.35
 openwakeword==0.6.0
 sounddevice==0.5.1
 soundfile==0.12.1

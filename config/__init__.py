@@ -76,7 +76,6 @@ class AppConfig:
 
     # Agent / tool-calling mode
     agent_enabled: bool = os.getenv("AGENT_ENABLED", "true").lower() == "true"
-    agent_max_iterations: int = int(os.getenv("AGENT_MAX_ITERATIONS", "5"))
     agent_speak_intermediate: bool = os.getenv("AGENT_SPEAK_INTERMEDIATE", "true").lower() == "true"
 
     # Recording / VAD

@@ -53,7 +53,6 @@ class AIAssistantPipeline:
             self._agent = AgentController(
                 self.llm,
                 registry,
-                max_iterations=cfg.agent_max_iterations,
                 speak_intermediate=cfg.agent_speak_intermediate,
             )
 
