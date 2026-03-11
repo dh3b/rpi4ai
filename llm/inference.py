@@ -9,10 +9,7 @@ class LLMInference:
     def __init__(self, config: LLMConfig):
         self.config  = config
         self.model   = self._load_model()
-        if self.config.agent_enabled:
-            self.grammar = LlamaGrammar.from_file("/grammar/agent.gbnf")
-        else:
-            self.grammar = LlamaGrammar.from_file("/grammar/chatbot.gbnf")
+        self.grammar = LlamaGrammar.from_file("/grammar/response.gbnf")
         self.history: list[dict[str, str]] = []
 
     def _load_model(self) -> Llama:
