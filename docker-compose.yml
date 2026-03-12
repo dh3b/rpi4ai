@@ -47,7 +47,6 @@ services:
 
     volumes:
       - ${MODELS_DIR:-}:/models:ro
-      - ./grammar:/grammar:ro
       - /run/asound:/run/asound:rw
 
     devices:

@@ -1,7 +1,6 @@
 import logging
 import signal
 import sys
-import json
 
 import numpy as np
 from config import AppConfig
@@ -127,23 +126,17 @@ class AIAssistantPipeline:
 
             # Step 4: Agent/LLM inference
             if self._agent_enabled and self._agent is not None:
-                raw_response = self._agent.run_turn(user_text, tts=self.tts, speaker=self.speaker)
+                response_text = self._agent.run_turn(user_text, tts=self.tts, speaker=self.speaker)
             else:
-                raw_response = self.llm.chat(user_text)
-            try:
-                response_text = json.loads(raw_response)["say"]
-            except json.JSONDecodeError:
-                logger.warning("LLM response was not valid JSON - treating as plain text")
-                response_text = raw_response
+                response_text = self.llm.chat(user_text)
 
             if not response_text:
                 logger.info("Empty LLM response - resuming wake-word loop")
                 continue
 
-            # Step 5/6: text -> speech -> play response (only in non-agent mode).
-            if not (self._agent_enabled and self._agent is not None):
-                audio_out, sample_rate = self.tts.synthesize(response_text)
-                self.speaker.play_audio(audio_out, sample_rate)
+            # Step 5: play response
+            audio_out, sample_rate = self.tts.synthesize(response_text)
+            self.speaker.play_audio(audio_out, sample_rate)
 
             logger.info("Listening for wake word")
 
